@@ -54,6 +54,23 @@ namespace Nura.DataServiceBlog
 
             return UniTask.CompletedTask;
         }
+        public void SaveData()
+        {
+            var filePath = GetFullPath();
+
+            try
+            {
+                var saveData = JsonConvert.SerializeObject(_data);
+                File.WriteAllText(filePath, saveData);
+
+                Debug.Log($"SaveData complete {filePath}\n{saveData}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Save data -- {this.GetType()} -- is error: {ex.GetBaseException()}\n{ex.StackTrace}");
+            }
+        }
 
     }
+
 }
