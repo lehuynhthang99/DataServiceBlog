@@ -14,7 +14,7 @@ namespace Nura.DataServiceBlog
 
     public abstract class DataController<TDataModel> : DataController where TDataModel : class, new()
     {
-        protected TDataModel _data;
+        [SerializeField] protected TDataModel _data;
 
         public override void InitData()
         {
