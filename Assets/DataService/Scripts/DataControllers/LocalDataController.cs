@@ -52,6 +52,8 @@ namespace Nura.DataServiceBlog
                 result = new TDataModel();
             }
 
+            _data = result;
+
             return UniTask.CompletedTask;
         }
         public void SaveData()
