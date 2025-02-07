@@ -2,12 +2,14 @@ using Cysharp.Threading.Tasks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace Nura.DataServiceBlog
 {
     public class DataManager : MonoBehaviour
     {
+        private const int MAX_RETRY_COUNT = 3;
         private static DataManager _instance;
         public static DataManager Instance { get => _instance; }
         public static bool IsAlive => _instance;
@@ -44,17 +46,67 @@ namespace Nura.DataServiceBlog
             }
         }
 
-        public UniTask LoadData()
+        public void InitData()
+        {
+            foreach (var controller in _controllers)
+            {
+                controller.InitData();
+            }
+        }
+
+        public async UniTask LoadData()
         {
             List<UniTask> loadingTasks = new List<UniTask>(_controllers.Length);
 
-            foreach (var controller in _controllers)
+            bool isSuccess = false;
+
+            //retry in case the process is error
+            for (int i = 0; i < MAX_RETRY_COUNT; i++)
             {
-                UniTask loadingTask = controller.LoadData();
-                loadingTasks.Add(loadingTask);
+                CancellationTokenSource cancellation = new CancellationTokenSource();
+
+                //start loading data
+                try
+                {
+                    loadingTasks.Clear();
+                    foreach (var controller in _controllers)
+                    {
+                        UniTask loadingTask = controller.StartLoadData(cancellation.Token);
+                        loadingTasks.Add(loadingTask);
+                    }
+
+                    await UniTask.WhenAll(loadingTasks).AttachExternalCancellation(cancellation.Token);
+                    isSuccess = true;
+                }
+                catch (Exception ex)
+                {
+                    //there is an error. Cancel the loading process and notify other data controller if there are still loading
+                    Debug.LogError($"Loading process is error: {ex.GetBaseException()}\n{ex.StackTrace}");
+                    cancellation.Cancel();
+                    cancellation.Dispose();
+                    cancellation = null;
+
+                    //TODO: handle exception here
+                }
+
+                if (isSuccess)
+                {
+                    break;
+                }
+                else
+                {
+                    await UniTask.Delay(2000);
+                }
             }
 
-            return UniTask.WhenAll(loadingTasks);
+            if (isSuccess)
+            {
+                Debug.Log("Loading data is success");
+            }
+            else
+            {
+                //TODO: handle the error here
+            }
 
         }
 

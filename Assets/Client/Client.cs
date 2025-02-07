@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using Nura.Client.ExampleFeature;
 using Nura.DataServiceBlog;
 using System.Collections;
@@ -10,7 +11,8 @@ namespace Nura.Client
     {
         private void Start()
         {
-            DataManager.Instance.LoadData();
+            DataManager.Instance.InitData();
+            DataManager.Instance.LoadData().Forget();
         }
 
         [ContextMenu("TryGetData")]

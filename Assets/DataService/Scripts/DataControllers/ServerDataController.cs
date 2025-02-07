@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
 using System;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -30,30 +31,32 @@ namespace Nura.DataServiceBlog
         }
         protected abstract UnityWebRequest GetRequest();
 
-        public override async UniTask LoadData()
+        protected override async UniTask LoadData(CancellationToken cancelToken)
         {
             try
             {
                 bool isSuccess = false;
                 string lastError = null;
                 string txtResult = null;
+
+               //retry if the loading process is error
                 for (int i = 0; i < MAX_RETRY_COUNT; i++)
                 {
                     UnityWebRequest webRequest = GetRequest();
                     var result = await webRequest.SendWebRequest();
+                    cancelToken.ThrowIfCancellationRequested();
 
+                   //check the result status
                     switch (result.result)
                     {
                         case UnityWebRequest.Result.ConnectionError:
                         case UnityWebRequest.Result.DataProcessingError:
                             lastError = result.error;
                             isSuccess = false;
-                            Debug.LogError($"Loading data is error: {lastError}");
                             break;
                         case UnityWebRequest.Result.ProtocolError:
                             lastError = result.error;
                             isSuccess = false;
-                            Debug.LogError($"Loading data is http error: {lastError}");
                             break;
                         case UnityWebRequest.Result.Success:
                             isSuccess = true;
@@ -62,6 +65,7 @@ namespace Nura.DataServiceBlog
                             break;
                     }
 
+                   //break the loop is success
                     if (isSuccess)
                     {
                         break;
@@ -75,16 +79,12 @@ namespace Nura.DataServiceBlog
                 }
                 else
                 {
-                    //TODO: notify the client to handle UI warning process
-                    Debug.LogError($"Loading data is out of retry: {lastError}");
-                    _data = new TDataModel();
+                    throw new Exception($"{this.GetType()} is error: {lastError}");
                 }
             }
             catch (Exception ex)
             {
-                //TODO: notify the client to handle UI warning process
-                Debug.LogError($"Loading data is error with unknown reason: {ex.GetBaseException()}\n{ex.StackTrace}");
-                _data = new TDataModel();
+                throw ex;
             }
         }
     }
